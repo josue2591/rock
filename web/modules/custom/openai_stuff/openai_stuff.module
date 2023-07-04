@@ -1,10 +1,62 @@
 <?php
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\openai_stuff\Service\OpenAIService;
+use Drupal\Core\Action\ActionInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Ajax\AlertCommand;
 
 /**
- * @file
- * Primary module hooks for openai stuff module.
- *
- * @DCG
- * This file is no longer required in Drupal 8.
- * @see https://www.drupal.org/node/2217931
+ * Implements hook_form_alter().
  */
+function openai_stuff_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // kint('dede');
+  if ($form_id == 'node_article_form') {
+    $form['actions']['generate_text'] = [
+      '#type' => 'submit',
+      '#value' => 'Generate Summary',
+      '#submit' => ['openai_stuff_generate_text_callback'],
+    ];
+
+    // Add a custom button to the form.
+    $form['actions']['fill_summary'] = [
+      '#type' => 'button',
+      '#value' => t('Fill Summary'),
+      '#ajax' => [
+        'callback' => 'openai_stuff_generate_text_callback',
+        'event' => 'click',
+      ],
+    ];
+  }
+
+}
+
+/**
+ * Form submit callback for generating text.
+ */
+function openai_stuff_generate_text_callback(&$form, FormStateInterface $form_state) {
+  // Check if the field is empty.
+  $response = new AjaxResponse();
+  if ($form_state->getValue('body')[0]['value'] != '') {
+    $prompt = strip_tags($form_state->getValue('body')[0]['value']);
+    $openaiService = new OpenAIService();
+    $generatedText = $openaiService->generateText($prompt);
+    dpm($generatedText);
+    // Set the summary value in the form state.
+    $form['body']['widget'][0]['summary']['#value'] = ltrim($generatedText);
+    
+    // Replace the field element with the new value.
+    $response->addCommand(new ReplaceCommand('#edit-body-wrapper', $form['body']));
+  }
+  else {
+    // Set an error message for the field.
+    // Display an alert message.
+    $form_state->setErrorByName('body', t('Please fill in the required field first.'));
+    $response->addCommand(new AlertCommand(t('Please fill in the required field first.')));
+  }
+
+  return $response;
+}

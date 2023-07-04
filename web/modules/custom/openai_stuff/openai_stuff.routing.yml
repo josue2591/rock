@@ -12,4 +12,4 @@ openai_stuff.settings_form:
     _title: 'openai stuff settings'
     _form: 'Drupal\openai_stuff\Form\SettingsForm'
   requirements:
-    _permission: 'administer openai_stuff configuration'
+    _permission: 'access content'
